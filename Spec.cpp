@@ -12,6 +12,7 @@
 #include <math.h>
 #include <dos.h>
 #include <iostream>
+
 using namespace std;
 
 typedef unsigned int uint;
@@ -282,11 +283,11 @@ void tranc()
 {
     
     FILE* cl;
-    fopen_s(&cl, "sp.dat", "r");
+    fopen_s(&cl, "sp.dat", "rt");
 
     for (int i = 0; i < Kmx; i++)
     {
-        fscanf_s(cl, "%e %e %e ", lev[i], n[i], k[i]);
+        fscanf_s(cl, "%e %e %e ", &lev[i], &n[i], &k[i]);
 
         w[i] = lev[i] * 1.6e-19 / hb;
         L[i] = 2 * M_PI * c / w[i];
@@ -308,7 +309,7 @@ void tranc()
     fclose(cl);
 }
 
-void mainris(HDC hdc) 
+void mainris(HDC hdc, HWND hWnd) 
 {
     uint i, j;
     float z, h;
@@ -318,10 +319,10 @@ void mainris(HDC hdc)
 
     char fdat[128];
     fdat[0] = 0;
-    HRGN hrgn = CreateRectRgn(0, 0, 640, 480);
+    HRGN hrgn = CreateRectRgn(0, 0, 1280, 960);
     HBRUSH hbr = CreateSolidBrush(RGB(0, 0, 0));
     FillRgn(hdc, hrgn, hbr);
-    
+
     FILE* F1;
     fopen_s((FILE**)&F1,"frsp.dat", "rt");
     for (i = 0; i < N; i++)
@@ -557,7 +558,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            mainris(hdc);
+            mainris(hdc, hWnd);
             // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
             EndPaint(hWnd, &ps);
         }

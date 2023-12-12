@@ -6,4 +6,3 @@ table* makeAr(int, int, int);
 void delAr(table*);
 #endif
 
-

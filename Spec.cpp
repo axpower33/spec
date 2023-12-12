@@ -12,32 +12,14 @@
 #include <math.h>
 #include <dos.h>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 
 typedef unsigned int uint;
-
-float** As;
-float** P;
-float** U;
-float* W;
-float* Xcl;
-float* Ycl;
-float* Zcl;
-float* X;
-float* L;
-float* del;
-float* XX;
-float* YY;
-float* ZZ;
-float* Chi;
-float* ya;
-float* db;
-int countCall;
-
 const float M_PI = 3.14;
 const int N = 50;
-const int nn = 3 * N;
+const int nn = 150;
 const int Kmx = 49;
 const float Xmn = -5e17;
 const float Xmx = 5e17;
@@ -53,369 +35,464 @@ float Lmn = 2e-5;
 float Lmx = 1e-4;
 float Lm = 4.1e-5;
 
+float As[nn][(nn + 1) / 2 + 1];
+float P[3*N][3*N];
+float U[3*N][3*N];
+float W[3*N];
+float Xcl[N];
+float Ycl[N];
+float Zcl[N];
+float X[Kmx];
+float L[Kmx];
+float del[Kmx];
+float XX[Kmx];
+float YY[Kmx];
+float ZZ[Kmx];
+float Chi[Kmx];
+float ya[Kmx];
+float db[Kmx];
+int countCall;
+
+
 struct complex
 {
-    float Re, Im;
+	float Re, Im;
 } e[Kmx], et[Kmx];
 
 float w[Kmx], lev[Kmx], n[Kmx], k[Kmx];
 
 float sqr(float x) noexcept
 {
-    return x * x;
+	return x * x;
 }
 
-bool FormArray() 
+bool FormArray()
 {
-    bool mem = false;
+	bool mem = false;
 
-    if (!(As = (float**)makeAr(nn, (nn + 1) / 2 + 1, sizeof(float)))) mem = true;
-
-
-    if (!(P = (float**)makeAr(nn, nn, sizeof(float)))) mem = true;
+	/*if (!(As = (float**)makeAr(nn, (nn + 1) / 2 + 1, sizeof(float)))) mem = true;
 
 
-    if (!(W = new float[nn])) mem = true;
+	if (!(P = (float**)makeAr(nn, nn, sizeof(float)))) mem = true;
 
 
-    if (!(U = (float**)makeAr(nn, nn, sizeof(float)))) mem = true;
+	if (!(W = new float[nn])) mem = true;
 
 
-    if (!(Xcl = new float[N])) mem = true;
+	if (!(U = (float**)makeAr(nn, nn, sizeof(float)))) mem = true;
+*/
 
-    if (!(Ycl = new float[N])) mem = true;
+	//if (!(Xcl = new float[N])) mem = true;
 
-
-    if (!(Zcl = new float[N])) mem = true;
-
-
-    if (!(XX = new float[Kmx])) mem = true;
+	//if (!(Ycl = new float[N])) mem = true;
 
 
-    if (!(YY = new float[Kmx])) mem = true;
+	//if (!(Zcl = new float[N])) mem = true;
 
 
-    if (!(ZZ = new float[Kmx])) mem = true;
+	/*if (!(XX = new float[Kmx])) mem = true;
 
 
-    if (!(Chi = new float[Kmx])) mem = true;
+	if (!(YY = new float[Kmx])) mem = true;
 
 
-    if (!(X = new float[Kmx])) mem = true;
+	if (!(ZZ = new float[Kmx])) mem = true;
+*/
+
+	/*if (!(Chi = new float[Kmx])) mem = true;
 
 
-    if (!(L = new float[Kmx])) mem = true;
+	if (!(X = new float[Kmx])) mem = true;
 
 
-    if (!(del = new float[Kmx])) mem = true;
+	if (!(L = new float[Kmx])) mem = true;*/
 
 
-    if (!(ya = new float[Kmx])) mem = true;
+	//if (!(del = new float[Kmx])) mem = true;
 
 
-    if (!(db = new float[Kmx])) mem = true;
+	//if (!(ya = new float[Kmx])) mem = true;
 
-    if (!mem) return true;
 
-    return false;
+	//if (!(db = new float[Kmx])) mem = true;
+
+	if (!mem) return true;
+
+	return false;
 }
 
 void DestrAr() noexcept
 {
-    delete[] Xcl;
-    delete[] Ycl;
-    delete[] Zcl;
-    delete[] W;
-    delAr((void**)U);
-    delAr((void**)As);
-    delAr((void**)P);
-    delete[] XX;
-    delete[] YY;
-    delete[] ZZ;
-    delete[] Chi;
-    delete[] X;
+	delete[] Xcl;
+	delete[] Ycl;
+	delete[] Zcl;
+	delete[] W;
+	delAr((void**)U);
+	delAr((void**)As);
+	delAr((void**)P);
+	delete[] XX;
+	delete[] YY;
+	delete[] ZZ;
+	delete[] Chi;
+	delete[] X;
 }
 
 float funMax(float* fun)
 {
-    float Cm;
-    Cm = fun[0];
-    for (int k = 1; k < Kmx; k++) if (Cm < fun[k]) Cm = fun[k];
-    return Cm;
+	float Cm;
+	Cm = fun[0];
+	for (int k = 1; k < Kmx; k++) if (Cm < fun[k]) Cm = fun[k];
+	return Cm;
 }
 
 float funMin(float* fun)
 {
-    float Cm;
-    Cm = fun[0];
-    for (int k = 1; k < Kmx; k++) if (Cm > fun[k]) Cm = fun[k];
-    return Cm;
+	float Cm;
+	Cm = fun[0];
+	for (int k = 1; k < Kmx; k++) if (Cm > fun[k]) Cm = fun[k];
+	return Cm;
 }
 
-void GraphIm(HDC hdc, float* X, float* fun) 
+void GraphIm(HDC hdc, float* X, float* fun)
 {
-    float RNG = 0.17;
-    _flushall();
+	float RNG = 0.17;
+	_flushall();
 
 
-    for (int k = 1; k < Kmx; k++) {
-        MoveToEx(hdc, X[k - 1], fun[k - 1], NULL);
-        LineTo(hdc, X[k], fun[k]);
-    }
-    _getch();
+	for (int k = 1; k < Kmx; k++) {
+		MoveToEx(hdc, X[k - 1], fun[k - 1], NULL);
+		LineTo(hdc, X[k], fun[k]);
+	}
+	_getch();
 
 }
 
 void Deigen(int n, int mv) noexcept
 {
-    const float range = 0.00001;
-    uint iq, mm, ll, lq, mq, jq, ind, ij, i, j;
-    uint l, m, lm, ilq, imq, im, il, imr, ilr, lmm;
-    float anorm, x, y, sinx, sinx2, cosx, cosx2, sincs;
-    float thr, anrmx;
-    if (mv != 1)
-    {
-        iq = -n;
-        for (j = 1; j < n + 1; j++)
-        {
-            iq += n;
-            for (uint i = 1; i < n + 1; i++)
-                if (i == j) P[(iq + i - 1) / nn][(iq + i - 1) % nn] = 1;
-                else P[(iq + i - 1) / nn][(iq + i - 1) % nn] = 0;
-        }
-    }
-    anorm = 0.0;
-    for (j = 2; j < n + 1; j++)
-        for (i = 1; i < j; i++)
-        {
-            ij = i + (j * j - j) / 2;
-            anorm += pow(As[(ij - 1) / nn][(ij - 1) % nn], 2);
-        }
-    if (anorm > 0)
-    {
-        anorm = sqrt(anorm) * 1.414;
-        anrmx = anorm * range / n;
-        // compute threshold:THR
-        ind = 0; thr = anorm;
-        // Їp®ўҐpЄ  ­®p¬л ¬ вpЁжл
-        do
-        {
-            thr /= n;
+	const float range = 0.00001;
+	uint iq, mm, ll, lq, mq, jq, ind, ij, i, j;
+	uint l, m, lm, ilq, imq, im, il, imr, ilr, lmm;
+	float anorm, x, y, sinx, sinx2, cosx, cosx2, sincs;
+	float thr, anrmx;
+	if (mv != 1)
+	{
+		iq = -n;
+		for (j = 1; j < n + 1; j++)
+		{
+			iq += n;
+			for (uint i = 1; i < n + 1; i++)
+				if (i == j) P[(iq + i - 1) / nn][(iq + i - 1) % nn] = 1;
+				else P[(iq + i - 1) / nn][(iq + i - 1) % nn] = 0;
+		}
+	}
+	anorm = 0.0;
+	for (j = 2; j < n + 1; j++)
+		for (i = 1; i < j; i++)
+		{
+			ij = i + (j * j - j) / 2;
+			anorm += pow(As[(ij - 1) / nn][(ij - 1) % nn], 2);
+		}
+	if (anorm > 0)
+	{
+		anorm = sqrt(anorm) * 1.414;
+		anrmx = anorm * range / n;
+		// compute threshold:THR
+		ind = 0; thr = anorm;
+		// Їp®ўҐpЄ  ­®p¬л ¬ вpЁжл
+		do
+		{
+			thr /= n;
 
-        m50: l = 1;
-        m55: m = l + 1;
-            //   compute SIN and COS
+		m50: l = 1;
+		m55: m = l + 1;
+			//   compute SIN and COS
 
-        m60: mq = (m * m - m) / 2;
-            lq = (l * l - l) / 2;
-            lm = l + mq;
-            if (fabs(As[(lm - 1) / nn][(lm - 1) % nn]) >= thr)
-            {
-                ind = 1;
-                ll = l + lq;
-                mm = m + mq;
-                x = 0.5 * (As[(ll - 1) / nn][(ll - 1) % nn] - As[(mm - 1) / nn][(mm - 1) % nn]);
-                y = -As[(lm - 1) / nn][(lm - 1) % nn] / sqrt(pow(As[(lm - 1) / nn][(lm - 1) % nn], 2) + x * x);
-                if (x < 0) y = -y;
-                sinx = y / sqrt(2.0 * (1.0 + (sqrt(1.0 - y * y))));
-                sinx2 = sinx * sinx;
-                cosx = sqrt(1.0 - sinx2);
-                cosx2 = cosx * cosx;
-                sincs = sinx * cosx;
-                //     rotate L and M columns
-                ilq = n * (l - 1);
-                imq = n * (m - 1);
-                for (i = 1; i < n + 1; i++)
-                {
-                    iq = (i * i - i) / 2;
-                    if (i != l)
-                    {
-                        if (i < m) { im = i + mq; goto m95; }
-                        else { if (i == m) goto m115; im = m + iq; }
-                    m95:     if (i < l) { il = i + lq; goto m110; }
-                        il = l + iq;
-                    m110:    x = As[(il - 1) / nn][(il - 1) % nn] * cosx - As[(im - 1) / nn][(im - 1) % nn] * sinx;
-                        As[(im - 1) / nn][(im - 1) % nn] = As[(il - 1) / nn][(il - 1) % nn] * sinx + As[(im - 1) / nn][(im - 1) % nn] * cosx;
-                        As[(il - 1) / nn][(il - 1) % nn] = x;
-                    }
-                m115:  if (mv != 1)
-                {
-                    ilr = ilq + i;
-                    imr = imq + i;
-                    x = P[(ilr - 1) / nn][(ilr - 1) % nn] * cosx - P[(imr - 1) / nn][(imr - 1) % nn] * sinx;
-                    P[(imr - 1) / nn][(imr - 1) % nn] = P[(ilr - 1) / nn][(ilr - 1) % nn] * sinx + P[(imr - 1) / nn][(imr - 1) % nn] * cosx;
-                    P[(ilr - 1) / nn][(ilr - 1) % nn] = x;
-                }
-                }
-                x = 2.0 * As[(lm - 1) / nn][(lm - 1) % nn] * sincs;
-                y = As[(ll - 1) / nn][(ll - 1) % nn] * cosx2 + As[(mm - 1) / nn][(mm - 1) % nn] * sinx2 - x;
-                x = As[(ll - 1) / nn][(ll - 1) % nn] * sinx2 + As[(mm - 1) / nn][(mm - 1) % nn] * cosx2 + x;
-                As[(lm - 1) / nn][(lm - 1) % nn] = (As[(ll - 1) / nn][(ll - 1) % nn] - As[(mm - 1) / nn][(mm - 1) % nn]) * sincs + As[(lm - 1) / nn][(lm - 1) % nn] * (cosx2 - sinx2);
-                As[(ll - 1) / nn][(ll - 1) % nn] = y;
-                As[(mm - 1) / nn][(mm - 1) % nn] = x;
-            }
-            //   test for completion
-            if (m != n) { m++; goto m60; }
-            if (l != (n - 1)) { l++; goto m55; }
-            if (ind == 1) { ind = 0; goto m50; }
-        } while (thr > anrmx);
-    }
-    for (i = 1; i < nn + 1; i++)
-    {
-        int k = (i * (i + 1)) / 2;
-        W[i - 1] = As[(k - 1) / nn][(k - 1) % nn];
-    }
-    m = 0; l = 1;
-    for (i = 1; i < nn * nn + 1; i++)
-    {
-        m++;
-        if (m == nn + 1)
-        {
-            m = 1; l++;
-        }
-        U[m - 1][l - 1] = P[(i - 1) / nn][(i - 1) % nn];
-    }
+		m60: mq = (m * m - m) / 2;
+			lq = (l * l - l) / 2;
+			lm = l + mq;
+			if (fabs(As[(lm - 1) / nn][(lm - 1) % nn]) >= thr)
+			{
+				ind = 1;
+				ll = l + lq;
+				mm = m + mq;
+				x = 0.5 * (As[(ll - 1) / nn][(ll - 1) % nn] - As[(mm - 1) / nn][(mm - 1) % nn]);
+				y = -As[(lm - 1) / nn][(lm - 1) % nn] / sqrt(pow(As[(lm - 1) / nn][(lm - 1) % nn], 2) + x * x);
+				if (x < 0) y = -y;
+				sinx = y / sqrt(2.0 * (1.0 + (sqrt(1.0 - y * y))));
+				sinx2 = sinx * sinx;
+				cosx = sqrt(1.0 - sinx2);
+				cosx2 = cosx * cosx;
+				sincs = sinx * cosx;
+				//     rotate L and M columns
+				ilq = n * (l - 1);
+				imq = n * (m - 1);
+				for (i = 1; i < n + 1; i++)
+				{
+					iq = (i * i - i) / 2;
+					if (i != l)
+					{
+						if (i < m) { im = i + mq; goto m95; }
+						else { if (i == m) goto m115; im = m + iq; }
+					m95:     if (i < l) { il = i + lq; goto m110; }
+						il = l + iq;
+					m110:    x = As[(il - 1) / nn][(il - 1) % nn] * cosx - As[(im - 1) / nn][(im - 1) % nn] * sinx;
+						As[(im - 1) / nn][(im - 1) % nn] = As[(il - 1) / nn][(il - 1) % nn] * sinx + As[(im - 1) / nn][(im - 1) % nn] * cosx;
+						As[(il - 1) / nn][(il - 1) % nn] = x;
+					}
+				m115:  if (mv != 1)
+				{
+					ilr = ilq + i;
+					imr = imq + i;
+					x = P[(ilr - 1) / nn][(ilr - 1) % nn] * cosx - P[(imr - 1) / nn][(imr - 1) % nn] * sinx;
+					P[(imr - 1) / nn][(imr - 1) % nn] = P[(ilr - 1) / nn][(ilr - 1) % nn] * sinx + P[(imr - 1) / nn][(imr - 1) % nn] * cosx;
+					P[(ilr - 1) / nn][(ilr - 1) % nn] = x;
+				}
+				}
+				x = 2.0 * As[(lm - 1) / nn][(lm - 1) % nn] * sincs;
+				y = As[(ll - 1) / nn][(ll - 1) % nn] * cosx2 + As[(mm - 1) / nn][(mm - 1) % nn] * sinx2 - x;
+				x = As[(ll - 1) / nn][(ll - 1) % nn] * sinx2 + As[(mm - 1) / nn][(mm - 1) % nn] * cosx2 + x;
+				As[(lm - 1) / nn][(lm - 1) % nn] = (As[(ll - 1) / nn][(ll - 1) % nn] - As[(mm - 1) / nn][(mm - 1) % nn]) * sincs + As[(lm - 1) / nn][(lm - 1) % nn] * (cosx2 - sinx2);
+				As[(ll - 1) / nn][(ll - 1) % nn] = y;
+				As[(mm - 1) / nn][(mm - 1) % nn] = x;
+			}
+			//   test for completion
+			if (m != n) { m++; goto m60; }
+			if (l != (n - 1)) { l++; goto m55; }
+			if (ind == 1) { ind = 0; goto m50; }
+		} while (thr > anrmx);
+	}
+	for (i = 1; i < nn + 1; i++)
+	{
+		int k = (i * (i + 1)) / 2;
+		W[i - 1] = As[(k - 1) / nn][(k - 1) % nn];
+	}
+	m = 0; l = 1;
+	for (i = 1; i < nn * nn + 1; i++)
+	{
+		m++;
+		if (m == nn + 1)
+		{
+			m = 1; l++;
+		}
+		U[m - 1][l - 1] = P[(i - 1) / nn][(i - 1) % nn];
+	}
 
 
 }
 
 void tranc()
 {
-    
-    FILE* cl;
-    fopen_s(&cl, "sp.dat", "rt");
 
-    for (int i = 0; i < Kmx; i++)
-    {
-        fscanf_s(cl, "%e %e %e ", &lev[i], &n[i], &k[i]);
+	//FILE* cl;
+	//fopen_s(&cl, "sp.dat", "rt");
+	ifstream mfile;
+	mfile.open("sp.dat");
+	float a;
+	int i = 0;
+	int j = 0;
+	//for(i=0; i<N; i++)
+		//fwscanf_s(F1, (wchar_t*) "%e %e %e", Xcl[i], Ycl[i], Zcl[i], 50);
+	while (mfile >> a)
+	{
+		if (j == 0)
+		{
+			lev[i] = a;
+			j = 1;
+			continue;
+		}
 
-        w[i] = lev[i] * 1.6e-19 / hb;
-        L[i] = 2 * M_PI * c / w[i];
+		if (j == 1)
+		{
+			n[i] = a;
+			j = 2;
+			continue;
 
-        et[i].Re = sqr(n[i]) - sqr(k[i]);
-        et[i].Im = 2 * n[i] * k[i];
+		}
+		if (j == 2)
+		{
+			k[i] = a;
+			j = 3;
+		}
 
-        e[i].Re = et[i].Re + sqr(wp) *
-            (1 / (sqr(w[i]) + sqr(gb)) - 1 / (sqr(w[i]) + sqr(gRm)));
-        e[i].Im = et[i].Im + sqr(wp) / w[i] *
-            (-gb / (sqr(w[i]) + sqr(gb)) + gRm / (sqr(w[i]) + sqr(gRm)));
 
-        ya[i] = 1.0 / (Rm * Rm * Rm) * 3 * eh * e[i].Im / (sqr(e[i].Re - eh) + sqr(e[i].Im));
-        db[i] = 2.0 / 3 * pow(2 * M_PI / L[i], 3);
-        del[i] = ya[i] + db[i];
+		if (j == 3)
+		{
+			j = 0;
+			i++;
+		}
+	}
+	//fclose(F1);
+	mfile.close();
+	for (int i = 0; i < Kmx; i++)
+	{
+		//fwscanf_s(cl,(wchar_t*) "%e %e %e ", &lev[i], &n[i], &k[i], 50);
 
-        X[i] = -1.0 / (Rm * Rm * Rm) * (1 + 3 * eh * (e[i].Re - eh) / (sqr(e[i].Re - eh) + sqr(e[i].Im)));
-    }
-    fclose(cl);
+		w[i] = lev[i] * 1.6e-19 / hb;
+		L[i] = 2 * M_PI * c / w[i];
+
+		et[i].Re = sqr(n[i]) - sqr(k[i]);
+		et[i].Im = 2 * n[i] * k[i];
+
+		e[i].Re = et[i].Re + sqr(wp) *
+			(1 / (sqr(w[i]) + sqr(gb)) - 1 / (sqr(w[i]) + sqr(gRm)));
+		e[i].Im = et[i].Im + sqr(wp) / w[i] *
+			(-gb / (sqr(w[i]) + sqr(gb)) + gRm / (sqr(w[i]) + sqr(gRm)));
+
+		ya[i] = 1.0 / (Rm * Rm * Rm) * 3 * eh * e[i].Im / (sqr(e[i].Re - eh) + sqr(e[i].Im));
+		db[i] = 2.0 / 3 * pow(2 * M_PI / L[i], 3);
+		del[i] = ya[i] + db[i];
+
+		X[i] = -1.0 / (Rm * Rm * Rm) * (1 + 3 * eh * (e[i].Re - eh) / (sqr(e[i].Re - eh) + sqr(e[i].Im)));
+	}
+	//fclose(cl);
 }
 
-void mainris(HDC hdc, HWND hWnd) 
+void mainris(HDC hdc, HWND hWnd)
 {
-    uint i, j;
-    float z, h;
-    float Ux, Uy, Uz;
-    float Uux, Uuy, Uuz;
+	uint i, j;
+	float z, h;
+	float Ux, Uy, Uz;
+	float Uux, Uuy, Uuz;
 
 
-    char fdat[128];
-    fdat[0] = 0;
-    HRGN hrgn = CreateRectRgn(0, 0, 1280, 960);
-    HBRUSH hbr = CreateSolidBrush(RGB(0, 0, 0));
-    FillRgn(hdc, hrgn, hbr);
+	char fdat[128];
+	fdat[0] = 0;
+	HRGN hrgn = CreateRectRgn(0, 0, 1280, 960);
+	HBRUSH hbr = CreateSolidBrush(RGB(0, 0, 0));
+	FillRgn(hdc, hrgn, hbr);
+	HPEN hNPen = CreatePen(PS_SOLID, 1, RGB(255, 0, 0));
+	
 
-    FILE* F1;
-    fopen_s((FILE**)&F1,"frsp.dat", "rt");
-    for (i = 0; i < N; i++)
-            fscanf_s(F1, "%e %e %e", &Xcl[i], &Ycl[i], &Zcl[i]);
-        
-    fclose(F1);
-    
-    for (i = 0; i < N; i++)
-        for (j = 0; j < N; j++)
-            if (i != j)
-            {
-                float rx = Xcl[i] - Xcl[j];
-                float ry = Ycl[i] - Ycl[j];
-                float rz = Zcl[i] - Zcl[j];
-                float r2 = rx * rx + ry * ry + rz * rz;
-                float r12 = sqrt(r2) / 1.65;
-                float r5 = 1.0 / (r2 * r2 * r12);
-                U[3 * i][3 * j] = (r2 - 3 * rx * rx) * r5;
-                U[3 * i][3 * j + 1] = -3 * rx * ry * r5;
-                U[3 * i][3 * j + 2] = -3 * rx * rz * r5;
-                U[3 * i + 1][3 * j] = U[3 * i][3 * j + 1];
-                U[3 * i + 1][3 * j + 1] = (r2 - 3 * ry * ry) * r5;
-                U[3 * i + 1][3 * j + 2] = -3 * ry * rz * r5;
-                U[3 * i + 2][3 * j] = U[3 * i][3 * j + 2];
-                U[3 * i + 2][3 * j + 1] = U[3 * i + 1][3 * j + 2];
-                U[3 * i + 2][3 * j + 2] = (r2 - 3 * rz * rz) * r5;
-            }
-            else
-            {
-                U[3 * i][3 * j] = 0;
-                U[3 * i][3 * j + 1] = 0;
-                U[3 * i][3 * j + 2] = 0;
-                U[3 * i + 1][3 * j] = 0;
-                U[3 * i + 1][3 * j + 1] = 0;
-                U[3 * i + 1][3 * j + 2] = 0;
-                U[3 * i + 2][3 * j] = 0;
-                U[3 * i + 2][3 * j + 1] = 0;
-                U[3 * i + 2][3 * j + 2] = 0;
-            }
-    int kl = 0;
-    for (i = 0; i < nn; i++)
-        for (j = 0; j < nn; j++)
-            if (i >= j)
-            {
-                kl++;
-                As[(kl - 1) / nn][(kl - 1) % nn] = U[i][j];
-                //   printf("\n<%u|W|%u>=%e",(i+1)/2,(j+1)/2,U[i][j]);
-            }
-    Deigen(nn, 0);
-    int k;
-    for (k = 0; k < Kmx; k++)
-    {
-        XX[k] = 0;
-        YY[k] = 0;
-        ZZ[k] = 0;
-    }
-    //   clrscr();
-    tranc();
-    for (k = 0; k < Kmx; k++)
-    { //X[k]=Xmn+k*(Xmx-Xmn)/Kmx;
-  
-        for (int n = 0; n < nn; n++)
-        {
-            z = -X[k] + W[n];
-            for (i = 0; i < N; i++)
-            {
-                Uux = U[3 * i][n];
-                Uuy = U[3 * i + 1][n];
-                Uuz = U[3 * i + 2][n];
-                h = z * z + del[k] * del[k];
-                for (j = 0; j < N; j++)
-                {
-                    Ux = Uux * U[3 * j][n] / h;
-                    Uy = Uuy * U[3 * j + 1][n] / h;
-                    Uz = Uuz * U[3 * j + 2][n] / h;
-                    XX[k] = XX[k] + del[k] * Ux;
-                    YY[k] = YY[k] + del[k] * Uy;
-                    ZZ[k] = ZZ[k] + del[k] * Uz;
-                }
-            }
-        }
-    }
+	/*FILE* F1;
+	fopen_s((FILE**)&F1, "frsp.dat", "rt");
+	float a;*/
+	ifstream mfile;
+	mfile.open("frsp.dat");
 
-    for (k = 0; k < Kmx; k++)
-    {
-        XX[k] = XX[k] / (3 * N);
-        YY[k] = YY[k] / (3 * N);
-        ZZ[k] = ZZ[k] / (3 * N);
-        Chi[k] = (XX[k] + YY[k] + ZZ[k]) * 4 * 2 * M_PI / (L[k] * Rm * Rm);
-    }
-    GraphIm(hdc, L, Chi);
-    DestrAr();
+	i = 0;
+	j = 0;
+	float a;
+	//for(i=0; i<N; i++)
+		//fwscanf_s(F1, (wchar_t*) "%e %e %e", Xcl[i], Ycl[i], Zcl[i], 50);
+	while(mfile >> a)
+	{
+		if (j == 0)
+		{
+			Xcl[i] = a;
+			j = 1;
+			continue;
+		}
+			
+		if (j == 1)
+		{
+			Ycl[i] = a;
+			j = 2;
+			continue;
+			
+		}
+		if (j==2)
+		{
+			Zcl[i] = a;
+			j = 3;
+		}
+	
+		
+	if (j == 3)
+	{
+		j = 0;
+		i++;
+	}
+	}
+	//fclose(F1);
+	mfile.close();
+	TextOutW(hdc, 0, 0, L"Привет", 10);
+	for (i = 0; i < N; i++)
+		for (j = 0; j < N; j++)
+			if (i != j)
+			{
+				float rx = Xcl[i] - Xcl[j];
+				float ry = Ycl[i] - Ycl[j];
+				float rz = Zcl[i] - Zcl[j];
+				float r2 = rx * rx + ry * ry + rz * rz;
+				float r12 = sqrt(r2) / 1.65;
+				float r5 = 1.0 / (r2 * r2 * r12);
+				U[3 * i][3 * j] = (r2 - 3 * rx * rx) * r5;
+				U[3 * i][3 * j + 1] = -3 * rx * ry * r5;
+				U[3 * i][3 * j + 2] = -3 * rx * rz * r5;
+				U[3 * i + 1][3 * j] = U[3 * i][3 * j + 1];
+				U[3 * i + 1][3 * j + 1] = (r2 - 3 * ry * ry) * r5;
+				U[3 * i + 1][3 * j + 2] = -3 * ry * rz * r5;
+				U[3 * i + 2][3 * j] = U[3 * i][3 * j + 2];
+				U[3 * i + 2][3 * j + 1] = U[3 * i + 1][3 * j + 2];
+				U[3 * i + 2][3 * j + 2] = (r2 - 3 * rz * rz) * r5;
+			}
+			else
+			{
+				U[3 * i][3 * j] = 0;
+				U[3 * i][3 * j + 1] = 0;
+				U[3 * i][3 * j + 2] = 0;
+				U[3 * i + 1][3 * j] = 0;
+				U[3 * i + 1][3 * j + 1] = 0;
+				U[3 * i + 1][3 * j + 2] = 0;
+				U[3 * i + 2][3 * j] = 0;
+				U[3 * i + 2][3 * j + 1] = 0;
+				U[3 * i + 2][3 * j + 2] = 0;
+			}
+	int kl = 0;
+	for (i = 0; i < nn; i++)
+		for (j = 0; j < nn; j++)
+			if (i >= j)
+			{
+				kl++;
+				As[(kl - 1) / nn][(kl - 1) % nn] = U[i][j];
+				//   printf("\n<%u|W|%u>=%e",(i+1)/2,(j+1)/2,U[i][j]);
+			}
+	Deigen(nn, 0);
+	int k;
+	for (k = 0; k < Kmx; k++)
+	{
+		XX[k] = 0;
+		YY[k] = 0;
+		ZZ[k] = 0;
+	}
+	//   clrscr();
+	tranc();
+	for (k = 0; k < Kmx; k++)
+	{ //X[k]=Xmn+k*(Xmx-Xmn)/Kmx;
+
+		for (int n = 0; n < nn; n++)
+		{
+			z = -X[k] + W[n];
+			for (i = 0; i < N; i++)
+			{
+				Uux = U[3 * i][n];
+				Uuy = U[3 * i + 1][n];
+				Uuz = U[3 * i + 2][n];
+				h = z * z + del[k] * del[k];
+				for (j = 0; j < N; j++)
+				{
+					Ux = Uux * U[3 * j][n] / h;
+					Uy = Uuy * U[3 * j + 1][n] / h;
+					Uz = Uuz * U[3 * j + 2][n] / h;
+					XX[k] = XX[k] + del[k] * Ux;
+					YY[k] = YY[k] + del[k] * Uy;
+					ZZ[k] = ZZ[k] + del[k] * Uz;
+				}
+			}
+		}
+	}
+
+	for (k = 0; k < Kmx; k++)
+	{
+		XX[k] = XX[k] / (3 * N);
+		YY[k] = YY[k] / (3 * N);
+		ZZ[k] = ZZ[k] / (3 * N);
+		Chi[k] = (XX[k] + YY[k] + ZZ[k]) * 4 * 2 * M_PI / (L[k] * Rm * Rm);
+	}
+	GraphIm(hdc, L, Chi);
+	//DestrAr();
 }
+
 #define MAX_LOADSTRING 100
 
 // Глобальные переменные:
@@ -558,9 +635,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            mainris(hdc, hWnd);
             // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
-            EndPaint(hWnd, &ps);
+			mainris(hdc, hWnd);
+			EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
